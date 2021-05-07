@@ -457,12 +457,13 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			var claims map[string]interface{}
 			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
-				c, diags := seetie.ExpToMap(confCtx, jwtConf.Claims)
+				v, diags := eval.Value(confCtx, jwtConf.Claims)
 				if diags.HasErrors() {
 					return nil, confErr.With(diags)
 				}
-				claims = c
+				claims = seetie.ValueToMap(v)
 			}
+
 			jwt, err := ac.NewJWT(&ac.JWTOptions{
 				Algorithm:      jwtConf.SignatureAlgorithm,
 				Claims:         claims,

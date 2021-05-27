@@ -22,7 +22,7 @@ const FnJWTSign = "jwt_sign"
 var rsaParseError = &rsa.PrivateKey{}
 
 func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningProfiles []*config.JWTSigningProfile,
-	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, hcl.Diagnostics)) function.Function {
+	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
 	signingProfiles := make(map[string]*config.JWTSigningProfile)
 	rsaKeys := make(map[string]*rsa.PrivateKey)
 
@@ -67,8 +67,8 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningProfiles []*config.JWTSi
 			// get claims from signing profile
 			if signingProfile.Claims != nil {
 				v, diags := evalFn(ctx, signingProfile.Claims)
-				if diags.HasErrors() {
-					return cty.StringVal(""), diags
+				if diags != nil {
+					return cty.StringVal(""), err
 				}
 				defaultClaims = seetie.ValueToMap(v)
 			}
@@ -76,6 +76,7 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningProfiles []*config.JWTSi
 			for k, v := range defaultClaims {
 				mapClaims[k] = v
 			}
+
 			if signingProfile.TTL != "0" {
 				ttl, parseErr := time.ParseDuration(signingProfile.TTL)
 				if parseErr != nil {

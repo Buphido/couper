@@ -457,9 +457,9 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			var claims map[string]interface{}
 			if jwtConf.Claims != nil { // TODO: dynamic expr eval ?
-				v, diags := eval.Value(confCtx, jwtConf.Claims)
-				if diags.HasErrors() {
-					return nil, confErr.With(diags)
+				v, e := eval.Value(confCtx, jwtConf.Claims)
+				if e != nil {
+					return nil, e
 				}
 				claims = seetie.ValueToMap(v)
 			}

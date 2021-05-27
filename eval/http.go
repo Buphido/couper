@@ -134,9 +134,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 	// apply query params in hierarchical and logical order: delete, set, add
 	attr, ok := attrs[attrDelQueryParams]
 	if ok {
-		val, attrDiags := Value(httpCtx, attr.Expr)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
+		val, attrErr := Value(httpCtx, attr.Expr)
+		if attrErr != nil {
+			return attrErr
 		}
 		for _, key := range seetie.ValueToStringSlice(val) {
 			values.Del(key)
@@ -146,9 +146,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 
 	attr, ok = attrs[attrSetQueryParams]
 	if ok {
-		val, attrDiags := Value(httpCtx, attr.Expr)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
+		val, attrErr := Value(httpCtx, attr.Expr)
+		if attrErr != nil {
+			return attrErr
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
@@ -160,9 +160,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 
 	attr, ok = attrs[attrAddQueryParams]
 	if ok {
-		val, attrDiags := Value(httpCtx, attr.Expr)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
+		val, attrErr := Value(httpCtx, attr.Expr)
+		if attrErr != nil {
+			return attrErr
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
@@ -214,9 +214,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	}
 
 	if okDel {
-		val, attrDiags := attrDel.Expr.Value(ctx)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
+		val, attrErr := Value(ctx, attrDel.Expr)
+		if attrErr != nil {
+			return attrErr
 		}
 		for _, key := range seetie.ValueToStringSlice(val) {
 			values.Del(key)
@@ -224,9 +224,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	}
 
 	if okSet {
-		val, attrDiags := attrSet.Expr.Value(ctx)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
+		val, attrErr := Value(ctx, attrSet.Expr)
+		if attrErr != nil {
+			return attrErr
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
@@ -235,9 +235,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	}
 
 	if okAdd {
-		val, attrDiags := attrAdd.Expr.Value(ctx)
-		if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-			return attrDiags
+		val, attrErr := Value(ctx, attrAdd.Expr)
+		if attrErr != nil {
+			return attrErr
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
@@ -258,7 +258,10 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 func evalURLPath(req *http.Request, attrs map[string]*hcl.Attribute, httpCtx *hcl.EvalContext) error {
 	path := req.URL.Path
 	if pathAttr, ok := attrs[attrPath]; ok {
-		pathValue, _ := Value(httpCtx, pathAttr.Expr)
+		pathValue, err := Value(httpCtx, pathAttr.Expr)
+		if err != nil {
+			return err
+		}
 		if str := seetie.ValueToString(pathValue); str != "" {
 			// TODO: Check for a valid absolute path
 			if i := strings.Index(str, "#"); i >= 0 {
@@ -383,9 +386,9 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 				continue
 			}
 
-			val, attrDiags := Value(httpCtx, attr.Expr)
-			if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-				return attrDiags
+			val, attrErr := Value(httpCtx, attr.Expr)
+			if attrErr != nil {
+				return attrErr
 			}
 
 			switch name {
@@ -427,9 +430,9 @@ func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (
 		return "", nil
 	}
 
-	val, diags := Value(ctx, attr[name].Expr)
-	if diags.HasErrors() {
-		return "", diags
+	val, err := Value(ctx, attr[name].Expr)
+	if err != nil {
+		return "", err
 	}
 
 	return seetie.ValueToString(val), nil

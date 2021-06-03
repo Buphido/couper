@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -51,20 +50,17 @@ type Context struct {
 	oauth2       []config.OAuth2Authorization
 	profiles     []*config.JWTSigningProfile
 	saml         []*config.SAML
+	src          []byte
 }
 
 func NewContext(src []byte, defaults *config.Defaults) *Context {
-	envKeys := decodeEnvironmentRefs(src)
-
-	var defaultEnvVariables config.DefaultEnvVars
+	defaultEnvVariables := make(config.DefaultEnvVars)
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
-	} else {
-		defaultEnvVariables = make(config.DefaultEnvVars)
 	}
 
 	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(envKeys, defaultEnvVariables)
+	variables[Environment] = newCtyEnvMap(defaultEnvVariables)
 	variables[Couper] = newCtyCouperVariablesMap()
 
 	return &Context{
@@ -74,6 +70,7 @@ func NewContext(src []byte, defaults *config.Defaults) *Context {
 			Functions: newFunctionsMap(),
 		},
 		inner: context.TODO(), // usually replaced with request context
+		src:   src,
 	}
 }
 
@@ -307,7 +304,7 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 
 // updateFunctions recreates the listed functions with latest evaluation context.
 func updateFunctions(ctx *Context) {
-	jwtfn := lib.NewJwtSignFunction(ctx.profiles, ctx.eval)
+	jwtfn := lib.NewJwtSignFunction(ctx.eval, ctx.profiles, Value)
 	ctx.eval.Functions[lib.FnJWTSign] = jwtfn
 }
 
@@ -433,19 +430,18 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 }
 
-func newCtyEnvMap(envKeys []string, defaultValues map[string]string) cty.Value {
-	if len(envKeys) == 0 {
-		return cty.MapValEmpty(cty.String)
-	}
+func newCtyEnvMap(defaultValues map[string]string) cty.Value {
 	ctyMap := make(map[string]cty.Value)
-	for _, key := range envKeys {
+	for _, pair := range os.Environ() {
+		key := strings.Split(pair, "=")[0]
+		value := os.Getenv(key)
 		if _, ok := ctyMap[key]; !ok {
-			if _, ok := os.LookupEnv(key); ok {
-				ctyMap[key] = cty.StringVal(os.Getenv(key))
-			} else if value, isset := defaultValues[key]; isset {
+			if val, set := defaultValues[key]; set && value == "" {
+				ctyMap[key] = cty.StringVal(val)
+				continue
+			}
+			if value != "" { // do not set empty string, fallback to nilVal per default
 				ctyMap[key] = cty.StringVal(value)
-			} else {
-				ctyMap[key] = cty.StringVal("")
 			}
 		}
 	}
@@ -473,33 +469,4 @@ func newFunctionsMap() map[string]function.Function {
 		"unixtime":      lib.UnixtimeFunc,
 		"url_encode":    lib.UrlEncodeFunc,
 	}
-}
-
-func decodeEnvironmentRefs(src []byte) []string {
-	tokens, diags := hclsyntax.LexConfig(src, "tmp.hcl", hcl.InitialPos)
-	if diags.HasErrors() {
-		panic(diags)
-	}
-	needle := []byte("env")
-	var keys []string
-	for i, token := range tokens {
-		if token.Type == hclsyntax.TokenDot && i > 0 &&
-			bytes.Equal(tokens[i-1].Bytes, needle) &&
-			i+1 < len(tokens) {
-			value := string(tokens[i+1].Bytes)
-			if !hasValue(keys, value) {
-				keys = append(keys, value)
-			}
-		}
-	}
-	return keys
-}
-
-func hasValue(list []string, needle string) bool {
-	for _, s := range list {
-		if s == needle {
-			return true
-		}
-	}
-	return false
 }

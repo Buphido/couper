@@ -115,12 +115,12 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		return err
 	}
 
-	if err := evalURLPath(req, attrs, httpCtx); err != nil {
+	if err = evalURLPath(req, attrs, httpCtx); err != nil {
 		return err
 	}
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
-	if err := applyHeaderOps(attrs,
+	if err = applyHeaderOps(attrs,
 		[]string{attrDelReqHeaders, attrSetReqHeaders, attrAddReqHeaders}, httpCtx, headerCtx); err != nil {
 		return err
 	}
@@ -152,6 +152,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			values[k] = toSlice(v)
 		}
 
@@ -166,6 +169,9 @@ func ApplyRequestContext(ctx context.Context, body hcl.Body, req *http.Request) 
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			list := toSlice(v)
 			if _, ok = values[k]; !ok {
 				values[k] = list
@@ -230,6 +236,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			values[k] = toSlice(v)
 		}
 	}
@@ -241,6 +250,9 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 		}
 
 		for k, v := range seetie.ValueToMap(val) {
+			if v == nil {
+				continue
+			}
 			list := toSlice(v)
 			if _, okAdd = values[k]; !okAdd {
 				values[k] = list

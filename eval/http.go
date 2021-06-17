@@ -324,12 +324,12 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 		httpCtx = c.eval
 	}
 
-	val, attrDiags := attr.Expr.Value(httpCtx)
-	if seetie.SetSeverityLevel(attrDiags).HasErrors() {
-		return 0, errors.Evaluation.With(attrDiags)
-	}
+		statusValue, err := Value(httpCtx, attr.Expr)
+		if err != nil {
+			return 0, err
+		}
 
-	status := seetie.ValueToInt(val)
+	status := seetie.ValueToInt(statusValue)
 	if status < 100 || status > 599 {
 		return 0, errors.Configuration.Label("set_response_status").
 			Messagef("invalid http status code: %d", status)
@@ -453,12 +453,12 @@ func GetAttribute(ctx *hcl.EvalContext, content *hcl.BodyContent, name string) (
 func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
 	attr, ok := content.Attributes["json_body"]
 	if ok {
-		val, diags := Value(ctx, attr.Expr)
-		if diags.HasErrors() {
-			return "", "", errors.Evaluation.With(diags)
+		val, err := Value(ctx, attr.Expr)
+		if err != nil {
+			return "", "", err
 		}
 
-		val, err := stdlib.JSONEncodeFunc.Call([]cty.Value{val})
+		val, err = stdlib.JSONEncodeFunc.Call([]cty.Value{val})
 		if err != nil {
 			return "", "", errors.Server.With(err)
 		}
@@ -468,9 +468,9 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 
 	attr, ok = content.Attributes["form_body"]
 	if ok {
-		val, diags := Value(ctx, attr.Expr)
-		if diags.HasErrors() {
-			return "", "", errors.Evaluation.With(diags)
+		val, err := Value(ctx, attr.Expr)
+		if err != nil {
+			return "", "", err
 		}
 
 		if valType := val.Type(); !(valType.IsObjectType() || valType.IsMapType()) {
@@ -489,9 +489,9 @@ func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, er
 
 	attr, ok = content.Attributes["body"]
 	if ok {
-		val, diags := Value(ctx, attr.Expr)
-		if diags.HasErrors() {
-			return "", "", errors.Evaluation.With(diags)
+		val, err := Value(ctx, attr.Expr)
+		if err != nil {
+			return "", "", err
 		}
 
 		return seetie.ValueToString(val), "text/plain", nil

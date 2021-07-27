@@ -27,6 +27,7 @@ type Requests []*Request
 func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<- *Result) {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
+	roundtripCreated := false
 
 	defer func() {
 		if rp := recover(); rp != nil {
@@ -37,6 +38,10 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 				},
 				RoundTripName: currentName,
 			})
+
+			if !roundtripCreated {
+				close(results)
+			}
 		}
 	}()
 
@@ -103,6 +108,7 @@ func (r Requests) Produce(ctx context.Context, req *http.Request, results chan<-
 			continue
 		}
 
+		roundtripCreated = true
 		wg.Add(1)
 		go roundtrip(or.Backend, outreq, results, wg)
 	}

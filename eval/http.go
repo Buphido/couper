@@ -324,10 +324,10 @@ func ApplyResponseStatus(ctx context.Context, attr *hcl.Attribute, beresp *http.
 		httpCtx = c.eval
 	}
 
-		statusValue, err := Value(httpCtx, attr.Expr)
-		if err != nil {
-			return 0, err
-		}
+	statusValue, err := Value(httpCtx, attr.Expr)
+	if err != nil {
+		return 0, err
+	}
 
 	status := seetie.ValueToInt(statusValue)
 	if status < 100 || status > 599 {

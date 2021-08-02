@@ -171,7 +171,7 @@ func (a AbstractAcClient) GetTokenResponse(ctx context.Context, callbackURL *url
 	evalContext, _ := ctx.Value(eval.ContextType).(*eval.Context)
 
 	v, _ := a.getAcClientConfig().GetBodyContent().Attributes["verifier_value"]
-	ctyVal, _ := v.Expr.Value(evalContext.HCLContext())
+	ctyVal, _ := eval.Value(evalContext.HCLContext(), v.Expr)
 	verifierValue := strings.TrimSpace(seetie.ValueToString(ctyVal))
 	if verifierValue == "" {
 		return nil, nil, "", errors.Oauth2.Message("Empty verifier_value")

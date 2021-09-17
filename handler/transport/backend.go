@@ -30,6 +30,7 @@ var _ http.RoundTripper = &Backend{}
 // Backend represents the transport configuration.
 type Backend struct {
 	context          hcl.Body
+	confContext      *eval.Context
 	name             string
 	openAPIValidator *validation.OpenAPI
 	options          *BackendOptions
@@ -39,7 +40,7 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
+func NewBackend(ctx hcl.Body, evalCtx *eval.Context, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var logEntry *logrus.Entry
 
 	var openAPI *validation.OpenAPI
@@ -49,6 +50,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 
 	backend := &Backend{
 		context:          ctx,
+		confContext:      evalCtx,
 		openAPIValidator: openAPI,
 		options:          opts,
 		transportConf:    tc,
